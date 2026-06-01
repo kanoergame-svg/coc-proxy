@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoC Tracker</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:linear-gradient(135deg,#0a0f1a,#1a1a2e);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;padding:20px;}
+        .container{max-width:1200px;margin:0 auto;}
+        .header{background:linear-gradient(135deg,#1e2a3a,#0f172a);border-radius:20px;padding:25px;margin-bottom:25px;text-align:center;}
+        .header h1{color:#ffc107;font-size:28px;}
+        .header p{color:#94a3b8;margin-top:8px;}
+        .search{background:rgba(30,42,58,0.6);border-radius:20px;padding:25px;margin-bottom:25px;display:flex;gap:15px;flex-wrap:wrap;}
+        .search input{flex:1;padding:14px;background:#0f172a;border:1px solid #334155;border-radius:12px;color:white;font-size:16px;}
+        .search button{padding:14px 30px;background:#ffc107;color:#0f172a;border:none;border-radius:12px;font-weight:bold;cursor:pointer;}
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:25px;}
+        .stat-card{background:linear-gradient(135deg,#1e2a3a,#0f172a);border-radius:16px;padding:20px;text-align:center;}
+        .stat-value{font-size:28px;font-weight:bold;color:#ffc107;}
+        .stat-label{color:#94a3b8;font-size:13px;margin-top:5px;}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:25px;}
+        @media(max-width:700px){.grid{grid-template-columns:1fr;}}
+        .panel{background:rgba(30,42,58,0.6);border-radius:20px;border:1px solid rgba(255,193,7,0.2);overflow:hidden;}
+        .panel-header{background:#0f172a;padding:15px;border-bottom:1px solid rgba(255,193,7,0.2);}
+        .panel-header h3{color:#ffc107;}
+        .panel-content{padding:20px;max-height:450px;overflow-y:auto;}
+        .member{display:flex;justify-content:space-between;padding:12px;border-bottom:1px solid rgba(255,255,255,0.05);}
+        .member-name{color:white;font-weight:bold;}
+        .member-tag{color:#64748b;font-size:11px;}
+        .member-level{color:#ffc107;font-size:12px;}
+        .loading{text-align:center;padding:40px;color:#94a3b8;}
+        .spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#ffc107;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px;}
+        @keyframes spin{to{transform:rotate(360deg);}}
+        .error{background:rgba(255,68,68,0.2);border-left:4px solid #ff4444;padding:15px;color:#ff8888;}
+        .status{padding:10px;margin-top:10px;border-radius:10px;text-align:center;}
+        .status-success{background:#2e7d32;color:white;}
+        .status-error{background:#c62828;color:white;}
+        .footer{text-align:center;padding:20px;color:#64748b;font-size:12px;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header"><h1>🏆 Clash of Clans Tracker</h1><p>Clan Stats | Member List | War Monitor</p></div>
+    <div class="search"><input type="text" id="clanTag" placeholder="Clan Tag (contoh: #2PP9G2VY)" value="#2PP9G2VY"><button onclick="search()">🔍 Cari Clan</button></div>
+    <div id="status" class="status" style="display:none;"></div>
+    <div class="stats"><div class="stat-card"><div class="stat-value" id="name">-</div><div class="stat-label">Nama Clan</div></div><div class="stat-card"><div class="stat-value" id="members">-</div><div class="stat-label">Anggota</div></div><div class="stat-card"><div class="stat-value" id="trophies">-</div><div class="stat-label">Trofi</div></div><div class="stat-card"><div class="stat-value" id="level">-</div><div class="stat-label">Level</div></div></div>
+    <div class="grid"><div class="panel"><div class="panel-header"><h3>👥 Anggota Clan</h3></div><div class="panel-content" id="membersList"><div class="loading"><div class="spinner"></div><p>Loading...</p></div></div></div><div class="panel"><div class="panel-header"><h3>⚔️ Clan War</h3></div><div class="panel-content" id="warInfo"><div class="loading"><div class="spinner"></div><p>Loading...</p></div></div></div></div>
+    <div class="footer">Data dari Clash of Clans API | Via Netlify</div>
+</div>
+<script>
+const API_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6ImQ3ZWY1OTVlLWI0MmYtNDBiZS1iODgyLTYzZDRlYmI3NDRhMCIsImlhdCI6MTc4MDI5NTUwOSwic3ViIjoiZGV2ZWxvcGVyLzFiNzgwMzdkLWEzYjctMTIzZi02MGZhLTkyNjU3ZWZlYzEzZiIsInNjb3BlcyI6WyJjbGFzaCJdLCJsaW1pdHMiOlt7InRpZXIiOiJkZXZlbG9wZXIvc2lsdmVyIiwidHlwZSI6InRocm90dGxpbmcifSx7ImNpZHJzIjpbIjUyLjg3LjIyOC40Il0sInR5cGUiOiJjbGllbnQifV19.cD9HWbbHhubUN8LsjEgnniJk5kW0cFmqxgDdSJwehWeQO_0Z_jMA7-ymuDe3T5ePSLymF3N-XhqviT0qmQbkNQ";
+let currentTag = null, interval = null;
+async function callAPI(endpoint){const res=await fetch(`/.netlify/functions/coc_proxy/${endpoint}`);if(!res.ok)throw new Error(await res.text());return res.json();}
+async function search(){let tag=document.getElementById('clanTag').value.trim();if(!tag)return;if(!tag.startsWith('#'))tag='#'+tag;showStatus('Loading...','success');document.getElementById('membersList').innerHTML='<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';document.getElementById('warInfo').innerHTML='<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
+try{const data=await callAPI(`clans/${encodeURIComponent(tag)}`);currentTag=tag;document.getElementById('name').innerText=data.name||'-';document.getElementById('members').innerText=data.members||'-';document.getElementById('trophies').innerText=data.clanPoints||'-';document.getElementById('level').innerText=data.clanLevel||'-';
+const members=data.memberList||[];members.sort((a,b)=>(b.trophies||0)-(a.trophies||0));document.getElementById('membersList').innerHTML=members.map(m=>`<div class="member"><div><div class="member-name">${escapeHtml(m.name)}</div><div class="member-tag">${escapeHtml(m.tag)}</div></div><div><div class="member-level">Lv ${m.expLevel||'-'}</div><div>🏆 ${m.trophies||0}</div></div></div>`).join('')||'<div class="loading">Tidak ada anggota</div>';
+try{const war=await callAPI(`clans/${encodeURIComponent(tag)}/currentwar`);if(war.state==='inWar')document.getElementById('warInfo').innerHTML=`<div style="text-align:center;padding:20px"><div style="font-size:48px">🔥</div><div class="member-name">PERANG SEDANG!</div><div>Vs: ${escapeHtml(war.opponent?.name||'Unknown')}</div><div>Skor: ${war.clan?.stars||0}⭐ vs ${war.opponent?.stars||0}⭐</div><div>Destruksi: ${war.clan?.destructionPercentage||0}% vs ${war.opponent?.destructionPercentage||0}%</div></div>`;
+else if(war.state==='preparation')document.getElementById('warInfo').innerHTML=`<div style="text-align:center;padding:20px"><div style="font-size:48px">🔧</div><div>Persiapan Perang</div><div>Vs: ${escapeHtml(war.opponent?.name||'Unknown')}</div></div>`;
+else document.getElementById('warInfo').innerHTML='<div style="text-align:center;padding:20px">⚔️ Clan sedang tidak dalam perang</div>';
+}catch(e){document.getElementById('warInfo').innerHTML='<div class="error">Tidak dalam perang</div>';}
+showStatus('✅ Berhasil','success');
+if(interval)clearInterval(interval);interval=setInterval(async()=>{if(currentTag)try{const d=await callAPI(`clans/${encodeURIComponent(currentTag)}`);document.getElementById('name').innerText=d.name||'-';document.getElementById('members').innerText=d.members||'-';document.getElementById('trophies').innerText=d.clanPoints||'-';document.getElementById('level').innerText=d.clanLevel||'-';}catch(e){}},30000);
+}catch(err){showStatus('❌ Error: '+err.message,'error');document.getElementById('membersList').innerHTML='<div class="error">Gagal memuat data</div>';}}
+function showStatus(msg,type){const s=document.getElementById('status');s.innerText=msg;s.className='status status-'+type;s.style.display='block';setTimeout(()=>s.style.display='none',4000);}
+function escapeHtml(str){if(!str)return '';return str.replace(/[&<>]/g,m=>m==='&'?'&amp;':m==='<'?'&lt;':'&gt;');}
+search();
+</script>
+</body>
+</html>

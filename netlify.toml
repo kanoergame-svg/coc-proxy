@@ -1,0 +1,10 @@
+[build]
+  functions = "netlify/functions"
+
+[functions]
+  python_runtime = "python39"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/coc_proxy/:splat"
+  status = 200
